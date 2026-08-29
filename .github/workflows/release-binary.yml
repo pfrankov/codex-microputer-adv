@@ -9,12 +9,6 @@ on:
         description: Release tag to rebuild; leave empty for latest
         required: false
         type: string
-  # One-time repair path for the current v0.10.3 release. Remove this branch
-  # trigger after the missing asset has been restored.
-  push:
-    branches: [docs/readme-code-accurate]
-    paths:
-      - .github/workflows/release-binary.yml
 
 permissions:
   contents: write
@@ -46,23 +40,13 @@ jobs:
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
-              --json assets --jq '.assets[].name' | grep -Fxq Codex.bin; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Codex.bin already exists on $tag"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Check out release tag
-        if: steps.release.outputs.skip != 'true'
         uses: actions/checkout@v5
         with:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
 
       - name: Verify tag matches firmware version
-        if: steps.release.outputs.skip != 'true'
         env:
           TAG: ${{ steps.release.outputs.tag }}
         run: |
@@ -71,24 +55,20 @@ jobs:
           grep -Fq "set(PROJECT_VER \"$version\")" CMakeLists.txt
 
       - name: Set up pinned toolchain
-        if: steps.release.outputs.skip != 'true'
         run: ./tools/setup.sh
 
       - name: Run regression suite
-        if: steps.release.outputs.skip != 'true'
         run: |
           ./tools/audit_public_tree.py
           ./tools/test.sh
 
       - name: Build release image
-        if: steps.release.outputs.skip != 'true'
         run: |
           ./tools/build.sh
           test -s dist/Codex.bin
           (cd dist && sha256sum Codex.bin > Codex.bin.sha256)
 
       - name: Preserve workflow artifact
-        if: steps.release.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Codex-${{ steps.release.outputs.tag }}
@@ -98,7 +78,6 @@ jobs:
           if-no-files-found: error
 
       - name: Attach binary to GitHub release
-        if: steps.release.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
