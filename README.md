@@ -64,8 +64,11 @@ Linux host behavior has not been release-tested.
 
 ## Install
 
-You need [M5Apps](https://github.com/d4rkmen/M5Apps) already installed on the
-Cardputer ADV and a FAT32 or exFAT microSD card.
+You need [M5Apps](https://github.com/d4rkmen/M5Apps) on the Cardputer ADV and a
+FAT32 or exFAT microSD card. When starting from a stock device, install M5Apps
+first using its recommended
+[M5Burner flow](https://github.com/d4rkmen/M5Apps#installation): open the
+**CardPuter** group, select **M5Apps**, and choose **Burn**.
 
 1. Download the latest **[`Codex.bin`](https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin)**.
 2. Copy `Codex.bin` to the microSD card.
