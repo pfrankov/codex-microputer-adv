@@ -40,6 +40,8 @@ provides glanceable status animations and local sound.
   while bond records are persisted for reconnects.
 - **No audio leaves the Cardputer.** Holding `G0` activates Codex voice input for
   the selected task, but the computer records the audio.
+- **Battery-aware.** Battery and charging state are reported to Codex; the LCD
+  stays quiet unless charge falls below 15%.
 - **M5Apps-native.** Codex runs as an M5Apps application instead of replacing
   the launcher or the rest of the device.
 
@@ -177,7 +179,8 @@ Codex Micro task slot:
 - **Green:** completed and not yet viewed.
 - **Light grey:** completed and viewed.
 - **Black with a red mark:** error.
-- **Pale outline:** idle or unassigned.
+- **Pale fill:** idle.
+- **Pale outline:** unassigned.
 
 A bottom rail marks the selected task. Selecting a task on either device moves
 the same selection on the other. A real status transition may expand its slot
@@ -248,9 +251,10 @@ A transport becomes active only after the firmware receives valid Codex Micro
 protocol traffic. A live USB session wins over BLE; if USB disappears or stops
 being the active Codex session, the selected BLE channel takes over.
 
-Each of the three BLE channels uses a separate device identity and bond. The
-Cardputer displays the six-digit passkey during first pairing; bonded hosts
-reconnect without pairing again. While connected, the firmware monitors RSSI,
+Each BLE channel uses a separate device identity. Bond records are persisted
+in shared storage, so previously paired hosts reconnect without entering the
+passkey again. The Cardputer displays the six-digit passkey during first
+pairing. While connected, the firmware monitors RSSI,
 adjusts transmit power, and may switch PHY to improve weak links.
 
 Settings and BLE data live in the `codex_ccp2` namespace of M5Apps'
