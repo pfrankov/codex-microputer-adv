@@ -240,7 +240,7 @@ The default local settings are 60% volume, startup sound enabled, and the
 - **Chime Lab:** select one of ten startup compositions with the arrows and play
   it with Enter. The selected composition is saved.
 - **Status Debug:** choose a 100, 200, 300, or 500 ms status debounce; adjust
-  status-audio offset from -300 to +300 ms in 25 ms steps; and exercise the real
+  a -300..+300 ms status-audio offset in 25 ms steps; and exercise the real
   Running, Input, Done, Error, and Idle rendering/audio paths.
 
 The current defaults are a 100 ms status debounce and a +200 ms audio offset.
