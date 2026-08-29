@@ -160,7 +160,7 @@ bridge-free control set.
 | Tab | Open or close local settings. |
 | Option+Tab | Open or close developer and diagnostic tools. |
 | Backtick | Local Back/Esc. Returns to the deck, closes the stick page, or asks Codex to close an active dial surface. It never exits to M5Apps. |
-| Arrow-style keys held down | Stick directions and dial detents repeat after the initial hold delay. |
+| Hold `[`, `]`, `;`, `.`, `,`, or `/` | Repeat the corresponding dial or stick impulse after 420 ms, then every 120 ms. |
 | Any key while dark | Wake the panel only. The first press is intentionally not forwarded to Codex. |
 
 Physical press and release edges are preserved for Agent keys, command slots,
@@ -352,9 +352,7 @@ live task deck. The checked-in gallery is in [`screenshots/`](screenshots/).
 - `tools/` — pinned setup, build, install, verification, diagnostics, and
   screenshot tools.
 - `patches/` — the pinned ESP-IDF HID compatibility patch.
-- `docs/INTERACTION.md` — detailed interaction specification.
 - `DESIGN.md` and `PRODUCT.md` — visual and product contracts.
-- `SCENARIOS.ru.md` — concise Russian action/result acceptance scenarios.
 
 ## License
 
