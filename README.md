@@ -1,6 +1,8 @@
 # Codex Microputer ADV
 
 <p align="center">
+  <a href="https://github.com/pfrankov/codex-microputer-adv/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/pfrankov/codex-microputer-adv"></a>
+  <a href="https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin"><img alt="Download Codex.bin" src="https://img.shields.io/badge/download-Codex.bin-2f6bd8.svg"></a>
   <a href="https://github.com/pfrankov/codex-microputer-adv/actions/workflows/host-tests.yml"><img alt="Build and tests" src="https://github.com/pfrankov/codex-microputer-adv/actions/workflows/host-tests.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
 </p>
@@ -62,20 +64,38 @@ release-tested.
 
 ## Install
 
-> [!NOTE]
-> A ready-to-flash `Codex.bin` is **not currently attached to GitHub releases**.
-> The supported installation path is to build the reproducible application
-> image from source.
+### Install the latest release
 
-### Prerequisites
+You need an M5Stack Cardputer ADV with M5Apps already installed and a FAT32 or
+exFAT microSD card.
 
-- Git, Python 3, Bash, CMake, and Ninja.
-- Enough disk space for a project-local ESP-IDF toolchain.
-- M5Apps already installed on the Cardputer ADV.
-- A microSD card for the normal first installation, or a USB cable for the
-  development installer.
+1. Download **[`Codex.bin`](https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin)** from the latest release.
+2. Optionally download [`Codex.bin.sha256`](https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin.sha256) and verify the image:
 
-### Build the M5Apps image
+   ```bash
+   shasum -a 256 -c Codex.bin.sha256
+   ```
+
+3. Copy `Codex.bin` to the microSD card.
+4. Boot M5Apps and open **Installer → SD card → Codex.bin**.
+5. Launch **Codex** from the M5Apps launcher.
+6. Connect the detected `Codex Micro ADV` device to Codex over USB or Bluetooth.
+
+> [!IMPORTANT]
+> `Codex.bin` is an **M5Apps application image**, not a complete device image.
+> Do not flash it at address `0x0`; M5Apps owns the bootloader and partition
+> table.
+
+Release binaries are reproducible from the tagged source. The release workflow
+checks out the exact release tag, verifies that the tag matches `PROJECT_VER`,
+runs the public-tree audit and host regression suite, builds `dist/Codex.bin`,
+preserves it as a GitHub Actions artifact, and attaches both `Codex.bin` and its
+SHA-256 checksum to the GitHub release.
+
+### Build from source
+
+Build requirements are Git, Python 3, Bash, CMake, Ninja, and enough disk space
+for a project-local ESP-IDF toolchain.
 
 ```bash
 git clone https://github.com/pfrankov/codex-microputer-adv.git
@@ -88,22 +108,8 @@ cd codex-microputer-adv
 
 `setup.sh` installs pinned dependencies under `.deps/`: ESP-IDF 5.5.3, the
 tested M5Cardputer UserDemo revision, and the required HID compatibility patch.
-The finished M5Apps application is written to:
-
-```text
-dist/Codex.bin
-```
-
-### Install through M5Apps
-
-1. Copy `dist/Codex.bin` to a FAT32 or exFAT microSD card.
-2. Boot M5Apps.
-3. Open **Installer → SD card → Codex.bin**.
-4. Launch **Codex** from the M5Apps launcher.
-5. Connect `Codex Micro ADV` in Codex over USB or Bluetooth.
-
-`Codex.bin` is an **application image**, not a complete flash image. Do not
-write it at address `0x0`; M5Apps owns the bootloader and partition table.
+The finished M5Apps application is written to `dist/Codex.bin`; install it
+through M5Apps exactly like the release image above.
 
 ### Update over USB during development
 
@@ -254,12 +260,12 @@ being the active Codex session, the selected BLE channel takes over.
 Each BLE channel uses a separate device identity. Bond records are persisted
 in shared storage, so previously paired hosts reconnect without entering the
 passkey again. The Cardputer displays the six-digit passkey during first
-pairing. While connected, the firmware monitors RSSI,
-adjusts transmit power, and may switch PHY to improve weak links.
+pairing. While connected, the firmware monitors RSSI, adjusts transmit power,
+and may switch PHY to improve weak links.
 
-Settings and BLE data live in the `codex_ccp2` namespace of M5Apps'
-shared `apps_nvs` partition. The firmware never erases that partition and stores
-no Codex, OpenAI, GitHub, Wi-Fi, or API credentials.
+Settings and BLE data live in the `codex_ccp2` namespace of M5Apps' shared
+`apps_nvs` partition. The firmware never erases that partition and stores no
+Codex, OpenAI, GitHub, Wi-Fi, or API credentials.
 
 USB serial remains available for diagnostics, screenshots, and development
 tools. It is not a hidden bridge for normal Codex operation, and diagnostic
@@ -351,6 +357,8 @@ live task deck. The checked-in gallery is in [`screenshots/`](screenshots/).
 - `tests/` — host-side regression tests built with warnings as errors.
 - `tools/` — pinned setup, build, install, verification, diagnostics, and
   screenshot tools.
+- `.github/workflows/release-binary.yml` — reproducible release build and binary
+  publication.
 - `patches/` — the pinned ESP-IDF HID compatibility patch.
 - `DESIGN.md` and `PRODUCT.md` — visual and product contracts.
 
