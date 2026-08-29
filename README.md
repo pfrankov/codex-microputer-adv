@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>A native six-task hardware controller for Codex, built for the M5Stack Cardputer ADV.</strong><br>
-  USB or Bluetooth Low Energy. No bridge, daemon, Wi-Fi, API key, or background process.
+  USB or Bluetooth Low Energy. No bridge, daemon, Wi-Fi connection, API key, or helper script.
 </p>
 
 <p align="center">
@@ -177,9 +177,9 @@ Bluetooth.
 | Idle | Pale fill |
 | Unassigned | Pale outline |
 
-Slot number and position carry the same information as colour. A bottom rail
-marks the selected task. Selecting a task in either Codex or on the Cardputer
-moves the same selection on the other device.
+Slot identity is always conveyed by number and position, not colour alone. A
+bottom rail marks the selected task. Selecting a task in either Codex or on the
+Cardputer moves the same selection on the other device.
 
 A real status transition can expand the affected slot across the display, play
 its matching local sound, hold briefly, and return. Repeated publication of the
@@ -214,7 +214,8 @@ Open these tools with Option+Tab.
   screens without operating Codex.
 - **Chime Lab:** choose and audition one of ten startup compositions.
 - **Status Debug:** exercise production Running, Input, Done, Error, and Idle
-  rendering and audio, adjust status debounce, and tune audio timing.
+  rendering and audio, choose status debounce, and adjust the status-audio
+  offset across `-300..+300 ms` in 25 ms steps.
 
 </details>
 
@@ -358,6 +359,7 @@ session. The checked-in gallery is in [`screenshots/`](screenshots/).
 
 ## Project documentation
 
+- [`CHANGELOG.md`](CHANGELOG.md) — release history and notable changes.
 - [`PRODUCT.md`](PRODUCT.md) — product purpose and design principles.
 - [`DESIGN.md`](DESIGN.md) — visual, motion, and sound system.
 - [`main/`](main/) — firmware, native transports, protocol, UI, audio, storage,
