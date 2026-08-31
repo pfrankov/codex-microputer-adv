@@ -133,8 +133,12 @@ Press `1` through `6` to open the matching task slot.
 | Option+Tab | Open or close developer tools |
 | Backtick | Go back locally, or ask Codex to close an active dial surface |
 
-Holding a dial or stick key repeats the gesture. When the display is dark, the
-first key press only wakes it; press the key again to perform the action.
+On the release-tested Cardputer ADV, dial and stick keys send one impulse per
+physical press. The original Cardputer GPIO keyboard backend also supports
+hold-to-repeat.
+
+When the display is dimmed or dark, the first key press restores full brightness
+without performing its action; press the key again to perform it.
 
 <details>
 <summary><strong>Exact native mapping</strong></summary>
@@ -145,6 +149,8 @@ first key press only wakes it; press the key again to perform the action.
 - `T` … `P` send `ACT06` … `ACT11`; `A` sends `ACT10_ACT11`.
 - Holding `G0` holds the selected `AGxx` and `ACT10` until physical release.
 - The four stick keys send directional joystick impulses.
+- On the original Cardputer GPIO backend, hold-to-repeat begins after 420 ms
+  and continues every 120 ms. Cardputer ADV does not synthesize repeat events.
 
 Codex owns the meaning of the dial and action slots, so model selection,
 reasoning effort, scrolling, Skills, New Chat, and custom commands follow the
@@ -191,8 +197,8 @@ production state checks.
 
 The display follows Codex Micro lighting when available. Without usable host
 lighting, it dims after 15 seconds and switches off after a further three
-minutes. The first key after darkness wakes the panel without triggering its
-action.
+minutes. From either the dimmed or dark state, the first key restores full
+brightness without triggering its action.
 
 ## Privacy and limitations
 
@@ -218,7 +224,7 @@ Current boundaries:
 | --- | --- |
 | Codex does not detect the device | Confirm Codex Micro support and use a data-capable USB cable |
 | Bluetooth is paired but inactive | Disconnect an active USB session and verify the selected Host Channel |
-| A key only wakes the display | This is intentional after sleep; press it again |
+| A key only restores brightness | This is intentional when the panel is dimmed or dark; press it again |
 | The release file is invalid | Download `Codex.bin` and its checksum again from the latest release |
 
 ## Build from source
