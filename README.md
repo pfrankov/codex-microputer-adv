@@ -205,8 +205,11 @@ brightness without triggering its action.
 The firmware makes no OpenAI API calls, stores no API keys, has no Wi-Fi
 connection, and runs no background network service. The Cardputer microphone is
 not used: Codex voice input records on the Mac. Local settings and Bluetooth
-bonds are stored only in the firmware's `codex_ccp2` namespace inside M5Apps'
-shared `apps_nvs` partition.
+bonds are stored only in the firmware's `codex_ccp2` namespace in the
+loader-owned NVS partition. The runtime prefers M5Apps' `apps_nvs` label and
+falls back to a compatible DATA/NVS partition, including the conventional
+`nvs` label. If a saved Mac bond becomes unusable, Opt+Tab → RESET BLE BONDS
+and Enter twice clears only those keys.
 
 Current boundaries:
 

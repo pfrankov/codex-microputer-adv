@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.4 — 2026-09-07
+
+- Discover the loader NVS partition at runtime: prefer M5Apps `apps_nvs`, then
+  any DATA/NVS slot. Host-channel settings and BLE bonds now persist on
+  loaders that label the store `nvs` instead of `apps_nvs`.
+- Surface the concrete ESP-IDF NVS error on device and over USB diagnostics.
+- Add a double-confirmed Opt+Tab `RESET BLE BONDS` action that erases only this
+  app's security keys and restarts advertising, leaving M5Apps data and local
+  preferences intact.
+- Ignore USB diagnostic DECK/TASK traffic while a native Codex Micro session is
+  alive. The leftover serial companion polls every two seconds and was calling
+  wake() on each line, so Auto-dim never held: the backlight bounced full/dim.
+
 ## 0.10.3 — 2026-08-24
 
 - The stick page has sound: right and up rise, left and down fall, on the same

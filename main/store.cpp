@@ -5,32 +5,50 @@
 #include "model.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "storage_partition.h"
 namespace store {
 namespace {
-constexpr char kPartition[] = "apps_nvs";
 constexpr char kNamespace[] = "codex_ccp2";
 constexpr uint32_t kWriteDebounceMs = 1500;
 bool ready = false;
 bool settings_dirty = false;
 uint32_t dirty_since_ms = 0;
+esp_err_t init_error = ESP_OK;
+esp_err_t last_error = ESP_OK;
 uint32_t now_ms()
 {
     return static_cast<uint32_t>(esp_log_timestamp());
 }
-nvs_handle_t open(nvs_open_mode_t mode)
+esp_err_t open(nvs_open_mode_t mode, nvs_handle_t* handle)
 {
-    nvs_handle_t handle = 0;
+    *handle = 0;
     if (!ready)
-        return 0;
-    return nvs_open_from_partition(kPartition, kNamespace, mode, &handle) == ESP_OK ? handle : 0;
+        return init_error == ESP_OK ? ESP_ERR_INVALID_STATE : init_error;
+    const char* partition = storage_partition::nvs_label();
+    return partition ? nvs_open_from_partition(partition, kNamespace, mode, handle)
+                     : ESP_ERR_NOT_FOUND;
+}
+void log_stats()
+{
+    nvs_stats_t stats = {};
+    const char* partition = storage_partition::nvs_label();
+    const esp_err_t e = partition ? nvs_get_stats(partition, &stats)
+                                  : ESP_ERR_NOT_FOUND;
+    if (e == ESP_OK) {
+        std::printf("CCP_STORE|stats|used=%u|free=%u|namespaces=%u\n",
+                    static_cast<unsigned>(stats.used_entries),
+                    static_cast<unsigned>(stats.free_entries),
+                    static_cast<unsigned>(stats.namespace_count));
+    }
 }
 esp_err_t write_settings()
 {
-    nvs_handle_t h = open(NVS_READWRITE);
-    if (!h)
-        return ESP_FAIL;
+    nvs_handle_t h = 0;
+    esp_err_t e = open(NVS_READWRITE, &h);
+    if (e != ESP_OK)
+        return e;
     const auto& s = model::state;
-    esp_err_t e = nvs_set_u8(h, "volume_v4", s.sound_volume);
+    e = nvs_set_u8(h, "volume_v4", s.sound_volume);
     if (e == ESP_OK)
         e = nvs_set_u8(h, "startup", s.startup_sound_on ? 1 : 0);
     if (e == ESP_OK)
@@ -53,29 +71,41 @@ bool commit_dirty()
     const esp_err_t e = write_settings();
     if (e == ESP_OK) {
         settings_dirty = false;
+        last_error = ESP_OK;
         return true;
     }
+    last_error = e;
     settings_dirty = true;
     dirty_since_ms = now_ms();
     std::printf("CCP_STORE|settings|write_failed|err=%s\n", esp_err_to_name(e));
+    log_stats();
     return false;
 }
-} // namespace
+}  // namespace
 void init()
 {
-    const esp_err_t e = nvs_flash_init_partition(kPartition);
-    ready = e == ESP_OK;
+    const char* partition = storage_partition::nvs_label();
+    init_error = partition ? nvs_flash_init_partition(partition) : ESP_ERR_NOT_FOUND;
+    ready = init_error == ESP_OK;
     if (!ready) {
-        std::printf("CCP_STORE|init|failed|err=%s\n", esp_err_to_name(e));
+        last_error = init_error;
+        std::printf("CCP_STORE|init|failed|err=%s\n", esp_err_to_name(init_error));
         return;
     }
+    last_error = ESP_OK;
+    std::printf("CCP_STORE|partition|label=%s\n", partition);
+    log_stats();
     load_settings();
 }
 void load_settings()
 {
-    nvs_handle_t h = open(NVS_READONLY);
-    if (!h)
+    nvs_handle_t h = 0;
+    const esp_err_t e = open(NVS_READONLY, &h);
+    if (e != ESP_OK) {
+        last_error = e;
+        std::printf("CCP_STORE|settings|read_failed|err=%s\n", esp_err_to_name(e));
         return;
+    }
     auto& s = model::state;
     uint8_t v = 0;
     if (nvs_get_u8(h, "volume_v4", &v) == ESP_OK && v <= 100) {
@@ -114,4 +144,8 @@ bool flush()
     settings_dirty = true;
     return commit_dirty();
 }
-} // namespace store
+const char* last_error_name()
+{
+    return esp_err_to_name(last_error);
+}
+}  // namespace store

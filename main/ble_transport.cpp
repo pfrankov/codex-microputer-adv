@@ -23,6 +23,7 @@
 #include "nimble/nimble_port_freertos.h"
 
 extern "C" void companion_ble_store_init(void);
+extern "C" esp_err_t companion_ble_store_forget_all(void);
 
 namespace {
 constexpr uint16_t kVid = 0x303a;
@@ -357,6 +358,27 @@ bool companion_ble_send(const char*, size_t)
 int companion_ble_bond_count(void)
 {
     return stored_bond_count();
+}
+esp_err_t companion_ble_forget_bonds(void)
+{
+    const esp_err_t store_error = companion_ble_store_forget_all();
+    if (store_error != ESP_OK)
+        return store_error;
+
+    pairing_active.store(false, std::memory_order_release);
+    pending_profile.store(-1, std::memory_order_release);
+    request_rpc_reset();
+    const uint16_t handle = connection_handle.load(std::memory_order_acquire);
+    if (handle != BLE_HS_CONN_HANDLE_NONE) {
+        const int result = ble_gap_terminate(handle, BLE_ERR_REM_USER_CONN_TERM);
+        std::printf("CCP_NATIVE|ble|forget|disconnect=%d\n", result);
+        return result == 0 ? ESP_OK : ESP_FAIL;
+    }
+
+    ble_gap_adv_stop();
+    const bool advertising = advertise_profile(model::state.ble_profile);
+    std::printf("CCP_NATIVE|ble|forget|advertising=%d\n", advertising ? 1 : 0);
+    return advertising ? ESP_OK : ESP_FAIL;
 }
 bool companion_ble_select_profile(uint8_t profile)
 {

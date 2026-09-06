@@ -4,8 +4,9 @@
 #include "esp_log.h"
 #include "host/ble_hs.h"
 #include "nvs.h"
+#include "storage_partition.h"
 namespace {
-constexpr char kTag[] = "ccp-bond", kPartition[] = "apps_nvs", kNamespace[] = "codex_ccp2";
+constexpr char kTag[] = "ccp-bond", kNamespace[] = "codex_ccp2";
 constexpr char kKeyOurSec[] = "ble_our", kKeyPeerSec[] = "ble_peer", kKeyCccd[] = "ble_cccd",
                kSchemaKey[] = "schema";
 constexpr uint8_t kSchemaVersion = 3;
@@ -16,7 +17,10 @@ int our_sec_count = 0, peer_sec_count = 0, cccd_count = 0;
 esp_err_t persist(const char* key, const void* data, size_t size, int count)
 {
     nvs_handle_t h = 0;
-    esp_err_t e = nvs_open_from_partition(kPartition, kNamespace, NVS_READWRITE, &h);
+    const char* partition = storage_partition::nvs_label();
+    esp_err_t e = partition
+        ? nvs_open_from_partition(partition, kNamespace, NVS_READWRITE, &h)
+        : ESP_ERR_NOT_FOUND;
     if (e != ESP_OK)
         return e;
     char count_key[16];
@@ -38,7 +42,9 @@ void restore(const char* key, void* data, size_t size, int max_count, int* count
 {
     *count = 0;
     nvs_handle_t h = 0;
-    if (nvs_open_from_partition(kPartition, kNamespace, NVS_READONLY, &h) != ESP_OK)
+    const char* partition = storage_partition::nvs_label();
+    if (!partition
+        || nvs_open_from_partition(partition, kNamespace, NVS_READONLY, &h) != ESP_OK)
         return;
     char count_key[16];
     std::snprintf(count_key, sizeof(count_key), "%s_n", key);
@@ -206,7 +212,7 @@ int store_delete(int type, const ble_store_key* key)
     cccd_count = next;
     return 0;
 }
-void erase_legacy_bond_keys(nvs_handle_t h)
+esp_err_t erase_bond_keys(nvs_handle_t h)
 {
     static const char* const keys[] = {
         kKeyOurSec, "ble_our_n", kKeyPeerSec, "ble_peer_n", kKeyCccd, "ble_cccd_n",
@@ -215,18 +221,25 @@ void erase_legacy_bond_keys(nvs_handle_t h)
         const esp_err_t e = nvs_erase_key(h, key);
         if (e != ESP_OK && e != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGW(kTag, "erase %s failed: %s", key, esp_err_to_name(e));
+            return e;
         }
     }
+    return ESP_OK;
 }
 } // namespace
 extern "C" void companion_ble_store_init(void)
 {
     nvs_handle_t h = 0;
-    if (nvs_open_from_partition(kPartition, kNamespace, NVS_READWRITE, &h) == ESP_OK) {
+    const char* partition = storage_partition::nvs_label();
+    const esp_err_t open_error = partition
+        ? nvs_open_from_partition(partition, kNamespace, NVS_READWRITE, &h)
+        : ESP_ERR_NOT_FOUND;
+    if (open_error == ESP_OK) {
         uint8_t schema = 0;
         if (nvs_get_u8(h, kSchemaKey, &schema) != ESP_OK || schema != kSchemaVersion) {
-            erase_legacy_bond_keys(h);
-            esp_err_t e = nvs_set_u8(h, kSchemaKey, kSchemaVersion);
+            esp_err_t e = erase_bond_keys(h);
+            if (e == ESP_OK)
+                e = nvs_set_u8(h, kSchemaKey, kSchemaVersion);
             if (e == ESP_OK)
                 e = nvs_commit(h);
             if (e == ESP_OK)
@@ -235,7 +248,8 @@ extern "C" void companion_ble_store_init(void)
                 ESP_LOGE(kTag, "schema migration failed: %s", esp_err_to_name(e));
         }
         nvs_close(h);
-    }
+    } else
+        ESP_LOGE(kTag, "open failed: %s", esp_err_to_name(open_error));
     restore(kKeyOurSec, our_secs, sizeof(*our_secs), kMaxBonds, &our_sec_count);
     restore(kKeyPeerSec, peer_secs, sizeof(*peer_secs), kMaxBonds, &peer_sec_count);
     restore(kKeyCccd, cccds, sizeof(*cccds), kMaxCccds, &cccd_count);
@@ -247,4 +261,34 @@ extern "C" void companion_ble_store_init(void)
 extern "C" int companion_ble_store_bond_count(void)
 {
     return peer_sec_count;
+}
+extern "C" esp_err_t companion_ble_store_forget_all(void)
+{
+    nvs_handle_t h = 0;
+    const char* partition = storage_partition::nvs_label();
+    esp_err_t e = partition
+        ? nvs_open_from_partition(partition, kNamespace, NVS_READWRITE, &h)
+        : ESP_ERR_NOT_FOUND;
+    if (e != ESP_OK) {
+        ESP_LOGE(kTag, "reset open failed: %s", esp_err_to_name(e));
+        return e;
+    }
+    e = erase_bond_keys(h);
+    if (e == ESP_OK)
+        e = nvs_set_u8(h, kSchemaKey, kSchemaVersion);
+    if (e == ESP_OK)
+        e = nvs_commit(h);
+    nvs_close(h);
+    if (e != ESP_OK) {
+        ESP_LOGE(kTag, "reset failed: %s", esp_err_to_name(e));
+        return e;
+    }
+    std::memset(our_secs, 0, sizeof(our_secs));
+    std::memset(peer_secs, 0, sizeof(peer_secs));
+    std::memset(cccds, 0, sizeof(cccds));
+    our_sec_count = 0;
+    peer_sec_count = 0;
+    cccd_count = 0;
+    ESP_LOGI(kTag, "reset complete; settings namespace retained");
+    return ESP_OK;
 }

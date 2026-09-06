@@ -1350,6 +1350,7 @@ void draw_debug_settings()
         {"SCREEN CHECKS", "ENTER"},
         {"CHIME LAB", audio::startup_chime_name(model::state.startup_chime)},
         {"STATUS DEBUG", "ENTER"},
+        {"RESET BLE BONDS", "ENTER"},
     };
     constexpr int top = 27;
     const int marker_y = top + static_cast<int>(debug_settings_marker.x + 0.5f);

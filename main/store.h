@@ -10,4 +10,7 @@ void save_settings();
 void load_settings();
 void service();
 bool flush();
+// Exact ESP-IDF error from the most recent failed open/write/commit. This is
+// stable text suitable for the small on-device diagnostic toast.
+const char* last_error_name();
 } // namespace store

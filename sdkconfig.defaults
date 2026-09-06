@@ -26,9 +26,9 @@ CONFIG_BT_NIMBLE_SVC_DIS_MANUFACTURER_NAME=y
 CONFIG_BT_NIMBLE_SVC_DIS_SERIAL_NUMBER=y
 CONFIG_BT_NIMBLE_SVC_DIS_PNP_ID=y
 CONFIG_BT_CONTROLLER_ENABLED=y
-# Bonding is persisted by this app into apps_nvs (see ble_store_apps_nvs.cpp),
-# not by NimBLE's own store, which would need a default `nvs` partition that
-# M5Apps does not create.
+# Bonding is persisted by this app into the loader-owned NVS partition (the
+# runtime prefers `apps_nvs` and falls back to any DATA/NVS partition),
+# not by NimBLE's built-in persistence.
 CONFIG_BT_NIMBLE_NVS_PERSIST=n
 CONFIG_BT_NIMBLE_SM_LEGACY=y
 CONFIG_BT_NIMBLE_SM_SC=y

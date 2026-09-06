@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "esp_err.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +23,9 @@ bool companion_ble_send(const char* data, size_t length);
 
 // Number of hosts this device has bonded with.
 int companion_ble_bond_count(void);
+// Erases only this app's BLE security material, preserving M5Apps and local
+// Codex preferences. The caller must explicitly confirm this destructive step.
+esp_err_t companion_ble_forget_bonds(void);
 bool companion_ble_select_profile(uint8_t profile);
 bool companion_codex_key(const char* key, int action, int agent = -1);
 bool companion_codex_joystick(float angle, float distance);

@@ -482,6 +482,9 @@ require("main/ui.cpp",
 require("main/ui.cpp",
         r"now - lighting_changed_ms >= kDimHoldMs[\s\S]{0,180}configured / 10",
         "host auto-dim must use the same three-minute readable hold")
+require("main/main.cpp",
+        r"void handle_line\([\s\S]{0,1200}active_transport\(\) != codex_micro::Transport::None[\s\S]{0,80}return;[\s\S]{0,40}ui::wake\(\)",
+        "USB diagnostic traffic must not wake Auto-dim during a live native session")
 
 require("main/theme.h", r"kOrdinal\s*=\s*rgb\(171,\s*168,\s*157\)",
         "row ordinals must use their own tone between rule and label type")
@@ -520,6 +523,24 @@ require("main/ui.cpp",
 require("main/codex_micro_protocol.cpp", r"rpc_framer::Assembler usb_input;[\s\S]{0,120}rpc_framer::Assembler ble_input;", "USB and BLE must not share partial RPC state")
 require("main/codex_micro_protocol.cpp", r"xQueueCreateStatic[\s\S]{0,1200}xQueueReceive", "protocol callbacks must hand reports to main task")
 forbid("main/ble_store_apps_nvs.cpp", r"nvs_erase_all\(", "BLE migration must never erase user settings")
+require("main/ble_store_apps_nvs.cpp",
+        r"companion_ble_store_forget_all[\s\S]{0,700}erase_bond_keys[\s\S]{0,500}"
+        r"memset\(peer_secs",
+        "explicit BLE recovery must clear only persisted and in-memory bond records")
+require("main/main.cpp",
+        r"DebugSettingsRow::ResetBluetooth[\s\S]{0,180}ble_reset_armed[\s\S]{0,240}"
+        r"companion_ble_forget_bonds",
+        "BLE bond reset must require a second explicit Enter press")
+require("main/store.cpp",
+        r"esp_err_t open\([\s\S]{0,300}nvs_open_from_partition[\s\S]{0,1800}"
+        r"last_error = e",
+        "settings storage must preserve the concrete NVS failure code")
+require("main/storage_partition.h",
+        r"ESP_PARTITION_SUBTYPE_DATA_NVS,\s*\"apps_nvs\"[\s\S]{0,220}"
+        r"ESP_PARTITION_SUBTYPE_DATA_NVS,\s*nullptr",
+        "storage must prefer M5Apps' label and fall back by stable NVS subtype")
+require("main/ble_store_apps_nvs.cpp", r"storage_partition::nvs_label\(\)",
+        "BLE bonds must use the same runtime-discovered NVS partition as settings")
 require("main/store.cpp", r"settings_dirty = false[\s\S]{0,260}settings_dirty = true", "failed settings writes must remain dirty")
 require("main/input_event_queue.h", r"if \(repeat \|\| !is_release\(item\)\)\s+return false", "release edges must survive queue pressure")
 require("main/keys.cpp", r"is_adv[\s\S]{0,300}Backend::None", "ADV TCA failure must not drive legacy matrix pins")

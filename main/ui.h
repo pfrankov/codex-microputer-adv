@@ -12,7 +12,9 @@ enum class Screen : uint8_t { Boot, Deck, Settings, DebugSettings, Previews,
                               StatusDebug, ChimeLab, Help };
 
 enum class SettingsRow : uint8_t { BleProfile, Volume, StartupSound, Exit, Count };
-enum class DebugSettingsRow : uint8_t { UsbHid, Previews, ChimeLab, StatusDebug, Count };
+enum class DebugSettingsRow : uint8_t {
+    UsbHid, Previews, ChimeLab, StatusDebug, ResetBluetooth, Count
+};
 // Screen checks live on their own list. Each renders a real path with fake
 // data, which is not the same kind of thing as a switch that changes how the
 // device behaves, and the two do not belong in one menu.
