@@ -1,0 +1,89 @@
+name: release-binary
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to rebuild; leave empty for latest
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-binary-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${EVENT_TAG:-}" ]]; then
+            tag="$EVENT_TAG"
+          elif [[ -n "${INPUT_TAG:-}" ]]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
+          fi
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check out release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify tag matches firmware version
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          grep -Fq "set(PROJECT_VER \"$version\")" CMakeLists.txt
+
+      - name: Set up pinned toolchain
+        run: ./tools/setup.sh
+
+      - name: Run regression suite
+        run: |
+          ./tools/audit_public_tree.py
+          ./tools/test.sh
+
+      - name: Build release image
+        run: |
+          ./tools/build.sh
+          test -s dist/Codex.bin
+          (cd dist && sha256sum Codex.bin > Codex.bin.sha256)
+
+      - name: Preserve workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Codex-${{ steps.release.outputs.tag }}
+          path: |
+            dist/Codex.bin
+            dist/Codex.bin.sha256
+          if-no-files-found: error
+
+      - name: Attach binary to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release upload "$TAG" \
+            dist/Codex.bin \
+            dist/Codex.bin.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

@@ -1,111 +1,251 @@
-# Codex Microputer ADV
-
-| 1. Ready | 2. Pair | 3. Control | 4. Speak |
-| --- | --- | --- | --- |
-| ![Codex Microputer ADV splash screen](screenshots/splash.png) | ![Bluetooth pairing screen](screenshots/pairing.png) | ![Six-task control deck](screenshots/deck.png) | ![Voice recording screen](screenshots/recording.png) |
+<h1 align="center">Codex Microputer ADV</h1>
 
 <p align="center">
-  <video src="https://github.com/user-attachments/assets/ce767565-add0-4f31-b462-34a8dcb9e293" poster="screenshots/demo_poster.jpg" controls muted loop playsinline width="100%"></video>
+  <strong>Turn an M5Stack Cardputer ADV into a six-task hardware controller for Codex.</strong><br>
+  Direct USB or Bluetooth Low Energy HID. No bridge, daemon, Wi-Fi connection, API key, or helper script.
 </p>
 
-Codex Microputer ADV turns an M5Stack Cardputer ADV into a native six-channel
-hardware controller for the Codex desktop app. It speaks the Codex Micro HID
-protocol directly over USB or Bluetooth Low Energy. No bridge, daemon, API key,
-Wi-Fi connection, or background script is required.
+<p align="center">
+  <a href="https://github.com/pfrankov/codex-microputer-adv/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/pfrankov/codex-microputer-adv"></a>
+  <a href="https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin"><img alt="Download Codex.bin" src="https://img.shields.io/badge/download-Codex.bin-2f6bd8.svg"></a>
+  <a href="https://github.com/pfrankov/codex-microputer-adv/actions/workflows/host-tests.yml"><img alt="Build and tests" src="https://github.com/pfrankov/codex-microputer-adv/actions/workflows/host-tests.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
+</p>
 
-> This is an independent community project. It is not affiliated with or
-> endorsed by OpenAI or M5Stack. Codex and Codex Micro are trademarks of their
-> respective owners.
+<p align="center">
+  <a href="https://github.com/user-attachments/assets/ce767565-add0-4f31-b462-34a8dcb9e293">
+    <img src="screenshots/demo_poster.jpg" alt="Codex Microputer ADV controlling Codex from an M5Stack Cardputer ADV" width="100%">
+  </a>
+</p>
 
-## What it does
+<p align="center"><sub>Click the image to watch the demo.</sub></p>
 
-- Mirrors the six task slots exposed by Codex Micro.
-- Shows running, waiting, completed-unread, completed-viewed, error, and idle
-  states as a full-screen six-column instrument panel.
-- Opens a task immediately with keys `1` through `6`.
-- Reflects task selection made in Codex back onto the Cardputer.
-- Plays debounced, status-specific animations and sound cues.
-- Sends the native Codex Micro encoder, analog-stick, Approve, Reject,
-  interrupt, send, and configurable action commands.
-- Activates Codex voice input for the selected task while the microphone key is
-  held. Audio is captured by the computer running Codex; the Cardputer does not
-  stream microphone audio.
-- Uses USB HID whenever available and falls back to the selected BLE host when
-  USB is disconnected.
-- Stores three independent BLE host profiles and reconnects automatically.
-- Mirrors Codex Micro brightness and auto-dim settings, reports battery state,
-  and keeps local sound preferences on the device.
-- Runs as an application inside [M5Apps](https://github.com/d4rkmen/M5Apps),
-  preserving the launcher and other installed Cardputer tools.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#controls">Controls</a> ·
+  <a href="#compatibility">Compatibility</a> ·
+  <a href="#build-from-source">Build from source</a>
+</p>
 
-The primary and release-tested target is **M5Stack Cardputer ADV**. The source
-contains a scanner for the original Cardputer keyboard, but that hardware is
-not part of the release qualification matrix.
+## What it is
 
-## What it does not do
+Codex Microputer ADV is an application for
+[M5Apps](https://github.com/d4rkmen/M5Apps). It presents the Cardputer ADV to
+the Codex desktop app as a native Codex Micro device and turns its keyboard,
+display, speaker, USB, and Bluetooth radio into one dedicated control surface.
 
-- It does not use the OpenAI API and does not contain or request API keys.
-- It does not replace Codex or run agents on the Cardputer.
-- It does not connect over Wi-Fi.
-- It does not transmit audio from the Cardputer microphone.
-- It cannot show task titles, timestamps, token usage, progress, or more than
-  six tasks because the native Micro protocol does not publish that data.
-- It cannot discover arbitrary remote chats that Codex has not assigned to one
-  of its six Micro slots.
-- Only one BLE host profile is active at a time. USB takes priority while
-  connected.
-- Windows and Linux host behavior is not currently release-tested.
+- Keep all six Codex Micro task slots visible at a glance.
+- Open a task immediately with keys `1` through `6`.
+- Use Codex's native dial, stick, action, send, and voice gestures.
+- Hear distinct local cues when a task starts, needs input, completes, or fails.
+- Keep M5Apps and the rest of the Cardputer intact.
 
-The Codex Micro protocol is not a public stable API. A future Codex desktop
-update may require corresponding firmware changes.
+| Task deck | Dial | Stick | Voice |
+| --- | --- | --- | --- |
+| ![Six-task Codex deck](screenshots/deck.png) | ![Codex dial control](screenshots/composer.png) | ![Codex analog-stick control](screenshots/stick.png) | ![Codex voice input](screenshots/recording.png) |
 
-## Requirements
+> [!NOTE]
+> The firmware controls an existing Codex desktop session. It does not run
+> Codex or an agent on the Cardputer.
 
-- M5Stack Cardputer ADV with an 8 MB flash chip.
-- A microSD card for the first M5Apps installation, or a USB cable for the
-  development installer.
-- [M5Apps](https://github.com/d4rkmen/M5Apps) installed on the device.
-- A current Codex-capable desktop app with Codex Micro support.
-- macOS 14 or later for the currently tested host path.
-- For building: Git, Python 3, CMake/Ninja prerequisites required by ESP-IDF,
-  and enough disk space for the ESP-IDF toolchain.
+## Compatibility
 
-## Install a release build
+| Component | Supported path |
+| --- | --- |
+| Device | **M5Stack Cardputer ADV** with 8 MB flash |
+| Host | **macOS 14 or later** is the release-tested path |
+| Codex | A desktop build with Codex Micro support |
+| Launcher | [M5Apps](https://github.com/d4rkmen/M5Apps) |
+| Connection | Native USB HID and Bluetooth Low Energy HID |
 
-1. Install and boot M5Apps on the Cardputer ADV.
-2. Download `Codex.bin` from this repository's latest GitHub release.
-3. Copy `Codex.bin` to a FAT32 or exFAT microSD card.
-4. In M5Apps, open **Installer → SD card → Codex.bin**.
-5. Launch **Codex** from the M5Apps launcher.
-6. On the computer, open Codex and connect the detected `Codex Micro ADV`
-   device over USB or Bluetooth.
+The source contains a keyboard backend for the original Cardputer, but that
+hardware is intended for development and is not release-qualified. Windows and
+Linux host behavior has not been release-tested.
 
-Do not flash `Codex.bin` at address `0x0`: it is an application image, not a
-complete device image. M5Apps owns the bootloader and partition table.
+## Install
+
+You need [M5Apps](https://github.com/d4rkmen/M5Apps) on the Cardputer ADV and a
+FAT32 or exFAT microSD card. When starting from a stock device, install M5Apps
+first using its recommended
+[M5Burner flow](https://github.com/d4rkmen/M5Apps#installation): open the
+**CardPuter** group, select **M5Apps**, and choose **Burn**.
+
+1. Download the latest **[`Codex.bin`](https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin)**.
+2. Copy `Codex.bin` to the microSD card.
+3. Boot M5Apps and open **Installer → SD card → Codex.bin**.
+4. Launch **Codex** from the M5Apps launcher.
+5. Open Codex on the Mac and connect `Codex Micro ADV` over USB or Bluetooth.
+
+Updates use the same process: install the newer `Codex.bin` through M5Apps.
+
+> [!IMPORTANT]
+> `Codex.bin` is an **M5Apps application image**, not a complete device image.
+> Do not flash it at address `0x0`; M5Apps owns the bootloader and partition
+> table.
+
+<details>
+<summary><strong>Verify the release checksum</strong></summary>
+
+Download
+[`Codex.bin.sha256`](https://github.com/pfrankov/codex-microputer-adv/releases/latest/download/Codex.bin.sha256)
+into the same directory and run:
+
+```bash
+shasum -a 256 -c Codex.bin.sha256
+```
+
+Release automation checks out the exact Git tag, verifies the firmware version,
+runs the audit and regression suite, builds the image, preserves it as a GitHub
+Actions artifact, and publishes both files.
+
+</details>
+
+## Connect
+
+### USB
+
+Connect the Cardputer with a data-capable USB cable and open Codex. A valid USB
+Codex session takes priority over Bluetooth.
+
+### Bluetooth
+
+Open local settings with Tab, select one of the three **Host Channel** profiles,
+and pair `Codex Micro ADV` using the six-digit code shown on the Cardputer.
+Previously paired profiles reconnect automatically. When USB is no longer the
+active Codex session, the selected Bluetooth profile resumes.
+
+Press `1` through `6` to open the matching task slot.
+
+## Controls
+
+| Cardputer control | What it does |
+| --- | --- |
+| `1` … `6` | Select and open the matching Codex task slot |
+| `[` / `]` | Rotate the native Codex dial |
+| Enter or Space | Confirm an open dial surface; otherwise send the prepared message |
+| `;` / `.` / `,` / `/` | Move the native stick **up / down / left / right** |
+| `T` / `Y` / `U` / `I` / `O` / `P` | Trigger configurable action slots; by default `Y` is Approve and `U` is Reject |
+| `A` | Trigger the combined `ACT10_ACT11` action |
+| Hold `G0` | Hold Codex push-to-talk for the selected task; the Mac records the audio |
+| `-` | Mute local sound or restore the previous volume |
+| `=` | Open or close the on-device key map |
+| Tab | Open or close local settings |
+| Option+Tab | Open or close developer tools |
+| Backtick | Go back locally, or ask Codex to close an active dial surface |
+
+On the release-tested Cardputer ADV, dial and stick keys send one impulse per
+physical press. The original Cardputer GPIO keyboard backend also supports
+hold-to-repeat.
+
+When the display is dimmed or dark, the first key press restores full brightness
+without performing its action; press the key again to perform it.
+
+<details>
+<summary><strong>Exact native mapping</strong></summary>
+
+- `1` … `6` send `AG00` … `AG05` press and release.
+- `[` sends `ENC_CW`; `]` sends `ENC_CC`.
+- Enter or Space sends `ENC` on the dial surface and `ACT12` on the task deck.
+- `T` … `P` send `ACT06` … `ACT11`; `A` sends `ACT10_ACT11`.
+- Holding `G0` holds the selected `AGxx` and `ACT10` until physical release.
+- The four stick keys send directional joystick impulses.
+- On the original Cardputer GPIO backend, hold-to-repeat begins after 420 ms
+  and continues every 120 ms. Cardputer ADV does not synthesize repeat events.
+
+Codex owns the meaning of the dial and action slots, so model selection,
+reasoning effort, scrolling, Skills, New Chat, and custom commands follow the
+current host configuration rather than being hardcoded in firmware.
+
+Backslash is intentionally unassigned. Delete emits
+`CCP_INTERRUPT|<thread-id>` only on the USB Serial/JTAG diagnostic channel; it
+is not a native Codex Micro interrupt gesture and is unavailable over
+Bluetooth.
+
+</details>
+
+## Task states
+
+| State | Display |
+| --- | --- |
+| Running | Blue |
+| Action required | Orange |
+| Completed, not yet viewed | Green |
+| Completed and viewed | Light grey |
+| Error | Black with a red mark |
+| Idle | Pale fill |
+| Unassigned | Pale outline |
+
+Task identity is always conveyed by number and position, not colour alone. A
+bottom rail marks the selected task, and selection stays synchronized between
+Codex and the Cardputer.
+
+A real status change can expand its slot across the display, play the matching
+sound, hold briefly, and return. Repeated publication of the same state does not
+replay the event. Dial, stick, and voice gestures each have a dedicated visual
+surface without inventing data the native protocol does not provide.
+
+## Settings and device behavior
+
+Tab opens local settings for Bluetooth host profile, volume, startup chime, and
+returning to M5Apps. The defaults are 60% volume, startup sound enabled, and the
+`CLOUD` composition.
+
+Option+Tab opens developer tools: USB HID control, production screen previews,
+Chime Lab, and Status Debug. Status Debug exposes a
+`-300..+300 ms status-audio offset` in 25 ms steps alongside status debounce and
+production state checks.
+
+The display follows Codex Micro lighting when available. Without usable host
+lighting, it dims after 15 seconds and switches off after a further three
+minutes. From either the dimmed or dark state, the first key restores full
+brightness without triggering its action.
+
+## Privacy and limitations
+
+The firmware makes no OpenAI API calls, stores no API keys, has no Wi-Fi
+connection, and runs no background network service. The Cardputer microphone is
+not used: Codex voice input records on the Mac. Local settings and Bluetooth
+bonds are stored only in the firmware's `codex_ccp2` namespace inside M5Apps'
+shared `apps_nvs` partition.
+
+Current boundaries:
+
+- the native protocol exposes exactly six task slots;
+- it does not publish task titles, timestamps, token usage, progress, or
+  arbitrary chat history to the device;
+- only one Bluetooth host profile is active at a time;
+- the original Cardputer, Windows, and Linux are not release-qualified;
+- Codex Micro is not a public stable protocol, so a future desktop update may
+  require a firmware update.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Codex does not detect the device | Confirm Codex Micro support and use a data-capable USB cable |
+| Bluetooth is paired but inactive | Disconnect an active USB session and verify the selected Host Channel |
+| A key only restores brightness | This is intentional when the panel is dimmed or dark; press it again |
+| The release file is invalid | Download `Codex.bin` and its checksum again from the latest release |
 
 ## Build from source
 
-The setup script installs pinned, project-local dependencies under `.deps/`:
-ESP-IDF 5.5.3 and the tested M5Stack Cardputer demo revision. It also applies
-the small ESP-IDF HID compatibility patch tracked in `patches/`.
-
 ```bash
-git clone <repository-url>
+git clone https://github.com/pfrankov/codex-microputer-adv.git
 cd codex-microputer-adv
+
 ./tools/setup.sh
 ./tools/test.sh
 ./tools/build.sh
 ```
 
-The M5Apps application image is written to `dist/Codex.bin`.
+The setup script installs pinned project-local dependencies under `.deps/`,
+including ESP-IDF 5.5.3 and the tested M5Cardputer UserDemo revision. The M5Apps
+image is written to `dist/Codex.bin`.
 
-If ESP-IDF and the M5Stack dependencies are already installed elsewhere, set
-`IDF_PATH`, `IDF_TOOLS_PATH`, and `M5CARDPUTER_DEMO_PATH` before sourcing
-`tools/env.sh`.
+<details>
+<summary><strong>Development install and verification</strong></summary>
 
-## Install over USB during development
-
-After M5Apps has created the `Codex` app partition once:
+After M5Apps has created the `Codex` application partition once:
 
 ```bash
 source tools/env.sh
@@ -113,124 +253,44 @@ source tools/env.sh
 ./tools/install.py
 ```
 
-The installer auto-detects `/dev/cu.usbmodem*`, verifies that the staged image
-matches the current build, writes only the existing `Codex` OTA partition,
-checks the flash digest, selects it through standard M5Apps OTA metadata, and
-launches it. Creating or resizing a partition requires the explicit
-`--create-partition` flag because that operation edits the partition table.
+The installer writes only the existing `Codex` OTA partition, verifies the flash
+digest, selects it through M5Apps metadata, and launches it. Partition creation
+or resizing requires the explicit `--create-partition` option.
 
-## Controls
-
-| Cardputer control | Native Codex Micro action |
-|---|---|
-| `1` … `6` | Select and open task slot 1 … 6 |
-| `[` / `]` | Encoder counter-clockwise / clockwise |
-| `\` | Encoder click |
-| `;` / `.` / `,` / `/` | Analog stick up / down / left / right |
-| `Y` | Approve (`ACT07` by default) |
-| `U` | Reject (`ACT08` by default) |
-| `A` | Combined voice action (`ACT10_ACT11`) |
-| Hold `G0` | Push-to-talk for the selected task |
-| Enter or Space | Send prepared composer message (`ACT12`) |
-| Delete | Interrupt current turn |
-| `-` | Mute or restore local sound |
-| Tab | User settings |
-| Option+Tab | Developer and diagnostics menu |
-| Backtick | Back |
-
-Action slots remain configurable in Codex. Long presses, releases, and native
-encoder gestures are sent as physical HID edges rather than guessed locally.
-Any key pressed while the display is asleep only wakes it; that first press is
-not forwarded.
-
-## Interface and settings
-
-The display is a six-column, one-pixel-separated task deck. Blue means running,
-orange means action is required, green means completed but unread, light grey
-means completed and viewed, and pale grey means idle. A bottom rail marks the
-selected task. A status change expands its slot across the display, holds the
-state briefly, then returns without blocking input.
-
-User settings include volume, startup sound, startup composition, BLE host
-profile, and return to M5Apps. The default startup composition is `CLOUD` and
-the default 60% volume reproduces the original hardware output level 150.
-
-Option+Tab exposes status animation tests, ten startup compositions, a
--300..+300 ms status-audio offset in 25 ms steps, debounce choices, BLE/USB
-controls, and preview screens. These tools use the production rendering and
-audio paths but do not mutate a Codex task.
-
-## Connection behavior
-
-USB HID is preferred whenever mounted. Disconnecting USB returns control to the
-selected BLE profile. Each of the three BLE profiles has independent bonding
-state. Pairing uses the code shown on the Cardputer screen; reconnection does
-not require pairing again. Signal strength is monitored and transmit power is
-adjusted dynamically.
-
-The firmware stores settings and BLE bonds in its own `codex_ccp2` namespace in
-M5Apps' shared `apps_nvs` partition. It never erases the partition. It contains
-no credentials for Codex, GitHub, OpenAI, Wi-Fi, or any other service.
-
-## Verification
-
-Run the host regression suite before every build:
+Run the full repository checks before a firmware change:
 
 ```bash
 ./tools/audit_public_tree.py
 ./tools/test.sh
+./tools/build.sh
 ```
 
-It covers the status reducer, announcement queue, animation continuity, HID
-framing, session synchronization, adaptive BLE power, keyboard mapping, display
-fade, and source-level safety contracts. GitHub Actions runs the suite with
-sanitizers and also performs a clean, pinned ESP-IDF firmware build.
-The public-tree audit rejects common credential formats, private keys,
-machine-local home paths, hardware addresses, and ignored artifact directories.
-
-After flashing on macOS:
+After flashing on macOS, verify the native exchanges with:
 
 ```bash
 source tools/env.sh
 ./tools/verify_codex_connection.py
 ```
 
-The verifier includes the previous three minutes by default, so it can be run
-after the short initialization exchange has completed. It watches the local Codex desktop log for successful
-`v.oai.rgbcfg`, `v.oai.thstatus`, and `device.status` exchanges and fails on
-control-plane initialization errors. `tools/devlink.py --demo` can exercise the
-display and audio without a Codex session.
+For a device-side demo without a live Codex session, run
+`./tools/devlink.py --demo`.
 
-## Repository layout
+</details>
 
-- `main/` — firmware, transports, protocol, UI, audio, storage, and input.
-- `tests/` — host-side regression tests compiled with warnings as errors.
-- `tools/` — reproducible setup, build, install, diagnostics, and asset tools.
-- `patches/` — pinned ESP-IDF compatibility patch.
-- `docs/` — interaction details.
-- `DESIGN.md` and `PRODUCT.md` — product and visual contracts.
-- `SCENARIOS.ru.md` — concise Russian action/result acceptance scenarios.
+## Documentation
 
-### Device screenshots
+- [`CHANGELOG.md`](CHANGELOG.md) — release history.
+- [`PRODUCT.md`](PRODUCT.md) — product purpose and principles.
+- [`DESIGN.md`](DESIGN.md) — visual, motion, and sound system.
+- [`main/`](main/) — firmware and native protocol implementation.
+- [`tests/`](tests/) — host-side regression tests.
+- [`tools/`](tools/) — setup, build, install, verification, and diagnostics.
 
-The firmware captures stable frames through the production display renderer,
-including a representative six-task deck. Connect the Cardputer over USB and
-capture one screen or the complete gallery:
+## Project status
 
-```bash
-python3 tools/screenshot.py --scene deck --output screenshot.png
-python3 tools/screenshot.py --scene live --output current-screen.png
-python3 tools/screenshot.py --scene all --output screenshots
-```
+This is an independent community project. It is not affiliated with or endorsed
+by OpenAI, M5Stack, or Work Louder. Codex and Codex Micro are trademarks of
+their respective owners.
 
-Available scenes are `live`, `splash`, `pairing`, `deck`, `recording`, `composer`,
-`settings`, `debug`, `chime`, `status`, and `signal`. Screenshot traffic is USB-only and does not congest
-the native Codex BLE session. Demo task state exists only for the duration of
-the render and never replaces the live task list.
-
-The complete captured gallery is stored in [`screenshots/`](screenshots/).
-
-## License
-
-Project source is available under the [Apache License 2.0](LICENSE). Embedded fonts
+The source is available under the [Apache License 2.0](LICENSE). Embedded fonts
 retain their SIL Open Font License notices in `assets/fonts/`.
