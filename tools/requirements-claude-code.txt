@@ -1,0 +1,2 @@
+# Optional macOS USB monitor only; hooks and tests use the standard library.
+hidapi==0.15.0
