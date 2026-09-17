@@ -531,11 +531,11 @@ void handle_press(const Press& press)
     // reachable from the splash. Tab returns to the splash, never to a fake
     // task deck; Opt+Tab keeps the same rule for diagnostics.
     if (s.link == model::Link::Offline) {
-        if (press.key == Key::Settings) {
+        if (press.down && press.key == Key::Settings) {
             ui::go(ui::screen() == ui::Screen::Settings ? ui::Screen::Boot : ui::Screen::Settings);
             return;
         }
-        if (press.key == Key::DebugSettings) {
+        if (press.down && press.key == Key::DebugSettings) {
             ui::go(ui::screen() == ui::Screen::DebugSettings ? ui::Screen::Boot
                                                              : ui::Screen::DebugSettings);
             return;
@@ -1283,7 +1283,14 @@ extern "C" void app_main(void)
                 // this first key cannot also approve, reject or switch a task.
                 companion_codex_key("WAKE", 1);
                 companion_codex_key("WAKE", 0);
-                continue;
+                // The splash's only local action is opening settings to pick a
+                // Bluetooth host channel. Swallowing Tab there leaves the user
+                // on an idle splash with no way to change profile.
+                const bool splash_settings =
+                    model::state.link == model::Link::Offline && press.down
+                    && (press.key == Key::Settings || press.key == Key::DebugSettings);
+                if (!splash_settings)
+                    continue;
             }
             handle_press(press);
         }

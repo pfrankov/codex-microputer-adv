@@ -10,6 +10,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "host_select.h"
 #include "link.h"
 #include "model.h"
 #include "rpc_framer.h"
@@ -94,8 +95,10 @@ void reset_presentation_sync(const char* reason)
     usb_session.begin();
     ble_session.begin();
     model::state.announcement_count = 0;
-    for (auto& task : model::state.tasks)
+    for (auto& task : model::state.tasks) {
         task.completion_hold = false;
+        task.seen = false;
+    }
     ui::cancel_status_announcements();
     std::printf("CCP_NATIVE|session_sync|baseline|reason=%s\n", reason ? reason : "unknown");
 }
@@ -123,6 +126,68 @@ void extend_selection_guard(uint32_t duration_ms)
 bool selection_guarded()
 {
     return static_cast<int32_t>(selection_guard_until_ms - now_ms()) > 0;
+}
+
+host_select::Snapshot snapshot_from_tasks()
+{
+    host_select::Snapshot snap;
+    for (int i = 0; i < 6; ++i) {
+        const auto& task = model::state.tasks[i];
+        snap.slots[i].color = task.color;
+        snap.slots[i].brightness = task.brightness;
+        snap.slots[i].effect = task.effect;
+        snap.slots[i].present = task.present;
+    }
+    return snap;
+}
+
+uint8_t parse_effect(cJSON* effect, uint8_t fallback)
+{
+    if (cJSON_IsNumber(effect))
+        return static_cast<uint8_t>(effect->valuedouble);
+    if (cJSON_IsString(effect))
+        return host_select::effect_named(effect->valuestring, fallback);
+    return fallback;
+}
+
+bool parse_sync_keys(cJSON* sk)
+{
+    if (cJSON_IsTrue(sk)) return true;
+    return cJSON_IsNumber(sk) && sk->valuedouble != 0;
+}
+
+void overlay_thstatus(host_select::Snapshot& snap, cJSON* params)
+{
+    cJSON* item = nullptr;
+    cJSON_ArrayForEach(item, params)
+    {
+        cJSON* id = cJSON_GetObjectItemCaseSensitive(item, "id");
+        if (!cJSON_IsNumber(id) || id->valueint < 0 || id->valueint >= 6)
+            continue;
+        auto& slot = snap.slots[id->valueint];
+        cJSON* color = cJSON_GetObjectItemCaseSensitive(item, "c");
+        cJSON* brightness = cJSON_GetObjectItemCaseSensitive(item, "b");
+        cJSON* effect = cJSON_GetObjectItemCaseSensitive(item, "e");
+        cJSON* sk = cJSON_GetObjectItemCaseSensitive(item, "sk");
+        if (cJSON_IsNumber(color))
+            slot.color = static_cast<uint32_t>(color->valuedouble) & 0xffffff;
+        if (cJSON_IsNumber(brightness))
+            slot.brightness = static_cast<float>(brightness->valuedouble);
+        slot.effect = parse_effect(effect, slot.effect);
+        slot.sync_keys = parse_sync_keys(sk);
+        host_select::refresh_present(slot);
+    }
+}
+
+void commit_host_selection(int slot, host_select::Reason reason, bool animate)
+{
+    if (slot < 0 || slot >= 6) return;
+    if (model::state.selected != slot) {
+        ui::select(slot, animate);
+        ++model::state.host_activity_serial;
+        std::printf("CCP_NATIVE|host_select|%d|%s\n", slot, host_select::reason_name(reason));
+    }
+    model::mark_done_viewed(slot);
 }
 
 bool transmit(Transport target, const char* json)
@@ -167,23 +232,10 @@ bool apply_thread_lights(cJSON* params, session_sync::Tracker& session)
     // frame look like six fresh status events, replaying the whole deck after
     // an unrelated key such as D. Keep the last truthful task state, while the
     // all-off edge still participates in display power together with rgbcfg.
-    bool any_lit = false;
-    float brightest = 0.f;
-    cJSON* probe = nullptr;
-    cJSON_ArrayForEach(probe, params)
-    {
-        cJSON* brightness = cJSON_GetObjectItemCaseSensitive(probe, "b");
-        cJSON* effect = cJSON_GetObjectItemCaseSensitive(probe, "e");
-        if (cJSON_IsNumber(brightness)) {
-            brightest = std::max(brightest,
-                                 std::clamp(static_cast<float>(brightness->valuedouble), 0.f, 1.f));
-        }
-        if (cJSON_IsNumber(brightness) && brightness->valuedouble > 0.001 &&
-            (!cJSON_IsNumber(effect) || effect->valueint != 0)) {
-            any_lit = true;
-        }
-    }
-    if (!any_lit) {
+    const host_select::Snapshot previous = snapshot_from_tasks();
+    host_select::Snapshot now = previous;
+    overlay_thstatus(now, params);
+    if (!host_select::any_lit(now)) {
         // Codex blanks all six when it closes a control surface. That is the
         // host saying the picker is gone, and it is the only honest way for the
         // device to know -- so the control page leaves on it rather than on a
@@ -199,14 +251,21 @@ bool apply_thread_lights(cJSON* params, session_sync::Tracker& session)
         std::printf("CCP_NATIVE|thstatus|all_off_power_only\n");
         return false;
     }
+    const float brightest = host_select::brightest(now);
     if (brightest > 0.001f)
         model::state.host_brightness = brightest;
 
     // Model/reasoning surfaces temporarily repaint Micro's six lamps with UI
     // colours. They are presentation, not task state: feeding (for example) a
     // red picker preview into the status reducer falsely announces Error.
-    // Preserve the truthful deck until the preview guard expires.
-    if (selection_guarded() || ui::composer_control_active()) {
+    // A leftover encoder guard must not swallow a real task snapshot: Codex
+    // deduplicates lighting, so the chat-switch frame that arrived during the
+    // guard would never be resent. Keep the picker path for the open control
+    // page and for guarded frames that are not host lamp colours.
+    const bool restoring = session.baseline(now_ms());
+    const bool picker_preview = ui::composer_control_active()
+        || (selection_guarded() && !host_select::looks_like_task_status(now));
+    if (picker_preview) {
         if (!model::state.host_threads_enabled) {
             model::state.host_threads_enabled = true;
             ++model::state.host_lighting_serial;
@@ -218,20 +277,9 @@ bool apply_thread_lights(cJSON* params, session_sync::Tracker& session)
         // lamps because the dial moved, the screen moves with them.
         uint32_t preview_rgb[6] = {};
         float    preview_level[6] = {};
-        cJSON* lamp = nullptr;
-        cJSON_ArrayForEach(lamp, params)
-        {
-            cJSON* id = cJSON_GetObjectItemCaseSensitive(lamp, "id");
-            if (!cJSON_IsNumber(id) || id->valueint < 0 || id->valueint >= 6)
-                continue;
-            cJSON* color = cJSON_GetObjectItemCaseSensitive(lamp, "c");
-            cJSON* brightness = cJSON_GetObjectItemCaseSensitive(lamp, "b");
-            if (cJSON_IsNumber(color))
-                preview_rgb[id->valueint] =
-                    static_cast<uint32_t>(color->valuedouble) & 0xffffff;
-            if (cJSON_IsNumber(brightness))
-                preview_level[id->valueint] = std::clamp(
-                    static_cast<float>(brightness->valuedouble), 0.f, 1.f);
+        for (int i = 0; i < 6; ++i) {
+            preview_rgb[i] = now.slots[i].color;
+            preview_level[i] = now.slots[i].brightness;
         }
         // The other way Codex signals a closed surface is to flash all six the
         // same white. A picker preview is never uniform -- it is showing a
@@ -274,12 +322,11 @@ bool apply_thread_lights(cJSON* params, session_sync::Tracker& session)
             frame.color = static_cast<uint32_t>(color->valuedouble) & 0xffffff;
         if (cJSON_IsNumber(brightness))
             frame.brightness = static_cast<float>(brightness->valuedouble);
-        if (cJSON_IsNumber(effect))
-            frame.effect = static_cast<uint8_t>(effect->valueint);
+        frame.effect = parse_effect(effect, frame.effect);
         if (cJSON_IsNumber(speed))
             frame.speed = static_cast<float>(speed->valuedouble);
         const status_reducer::Result reduced =
-            status_reducer::apply(task, frame, session.baseline());
+            status_reducer::apply(task, frame, restoring);
 
         if (reduced.changed) {
             ++model::state.host_activity_serial;
@@ -320,38 +367,15 @@ bool apply_thread_lights(cJSON* params, session_sync::Tracker& session)
     // meaningful host event rather than a poll heartbeat.
     ++model::state.host_activity_serial;
 
-    // Desktop encodes the selected chat as the only persistent breath effect
-    // (e=4); ordinary slots are solid (e=1). Reflect that host selection back
-    // into the hardware cursor instead of keeping a divergent local choice.
-    int breath_slot = -1;
-    int breath_count = 0;
-    for (int i = 0; i < 6; ++i) {
-        const auto& task = model::state.tasks[i];
-        if (task.present && task.effect == 4) {
-            breath_slot = i;
-            ++breath_count;
-        }
-    }
-    if (!selection_guarded() && breath_count == 1 && model::state.selected != breath_slot) {
-        model::state.selected = breath_slot;
-        ++model::state.host_activity_serial;
-        std::printf("CCP_NATIVE|host_select|%d\n", breath_slot);
-    } else if (selection_guarded() && breath_count == 1) {
-        std::printf("CCP_NATIVE|host_select_ignored|%d|preview\n", breath_slot);
-    }
-    if (!selection_guarded() && breath_count == 1) {
-        // Codex's breath slot is the chat the user is actually looking at.
-        // Remember that locally because desktop may keep publishing a stale
-        // green lamp after selection. A fresh completion still owns its green
-        // animation; its final frame will settle to viewed grey.
-        model::mark_done_viewed(breath_slot);
-    }
+    const host_select::Result inferred = host_select::infer(now, &previous);
+    if (inferred.slot >= 0)
+        commit_host_selection(inferred.slot, inferred.reason, !restoring);
     // Read state must be self-healing, not edge-triggered. A completion can
     // arrive as restoration after a transient all-off frame, in which case
     // reduced.changed is deliberately false. Every subsequent authoritative
     // live snapshot still confirms that the locally selected completed task is
     // being viewed, so a missed transition cannot leave it green forever.
-    if (!session.baseline())
+    if (!restoring)
         model::mark_done_viewed(model::state.selected);
     return true;
 }
@@ -435,15 +459,15 @@ void handle(Transport source, const char* json)
         cJSON_AddNumberToObject(result, "battery", std::max(0, model::state.battery));
         cJSON_AddBoolToObject(result, "is_charging", model::state.charging);
         if (owns_state)
-            session.note(session_sync::Method::DeviceStatus);
+            session.note(session_sync::Method::DeviceStatus, now_ms());
     } else if (std::strcmp(method->valuestring, "v.oai.thstatus") == 0) {
         if (owns_state && apply_thread_lights(params, session))
-            session.note(session_sync::Method::ThreadStatus);
+            session.note(session_sync::Method::ThreadStatus, now_ms());
         cJSON_AddBoolToObject(result, "ok", true);
     } else if (std::strcmp(method->valuestring, "v.oai.rgbcfg") == 0) {
         if (owns_state) {
             apply_lighting_config(params);
-            session.note(session_sync::Method::LightingConfig);
+            session.note(session_sync::Method::LightingConfig, now_ms());
         }
         cJSON_AddBoolToObject(result, "ok", true);
     } else if (std::strcmp(method->valuestring, "lights.preview") == 0) {

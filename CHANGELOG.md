@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.8 — 2026-09-18
+
+- Follow Codex chat switches on the Cardputer cursor. A leftover dial/preview
+  guard no longer swallows a live task snapshot, so the plate moves when the
+  host rebuilds lights after a focus change. Infer selection from the real
+  Micro cues: a unique white blink, `sk=1`, unique breath/shallowBreath, a
+  slot that just started blinking, or the only green-to-white viewed edge.
+  Working lamps may also breathe, so a unique `e=4` is no longer required.
+  Host selection calls `ui::select()`, so the plate actually travels.
+- Tab on the offline splash opens Host Channel even when the first press only
+  woke a dimmed or dark panel, so Bluetooth profile 1/2/3 can be chosen
+  before Codex is connected.
+- First Codex connection no longer plays a status animation for every slot.
+  Desktop republishes the real six-slot deck right after `device.status`; that
+  follow-up stayed outside the handshake baseline, so Idle→Running/Done edges
+  queued six takeovers. Keep a 1 s restore window after the handshake, and
+  clear `seen` when a session starts so leftover lamps cannot become events.
+
 ## 0.10.4 — 2026-09-07
 
 - Discover the loader NVS partition at runtime: prefer M5Apps `apps_nvs`, then

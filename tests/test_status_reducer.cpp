@@ -52,6 +52,21 @@ void multi_frame_session_baseline_never_becomes_an_event()
     check(!task.unseen_done, "white baseline completion is viewed");
 }
 
+void handshake_follow_up_does_not_replay_every_slot()
+{
+    model::Task tasks[6];
+    const uint32_t restored[6] = {
+        lamp::kRunning, lamp::kNeedsInput, lamp::kDoneUnseen,
+        lamp::kDoneSeen, lamp::kError, lamp::kRunning,
+    };
+    for (int i = 0; i < 6; ++i)
+        status_reducer::apply(tasks[i], lamp(0xffffff), true);
+    for (int i = 0; i < 6; ++i) {
+        auto result = status_reducer::apply(tasks[i], lamp(restored[i]), true);
+        check(!result.changed, "restored deck after handshake is not an event");
+    }
+}
+
 void fresh_completion_holds_green_until_animation_finishes()
 {
     model::Task task;
@@ -148,6 +163,7 @@ int main()
 {
     initial_sync_uses_lamp_color_without_event();
     multi_frame_session_baseline_never_becomes_an_event();
+    handshake_follow_up_does_not_replay_every_slot();
     fresh_completion_holds_green_until_animation_finishes();
     repeated_and_restored_frames_are_silent();
     latest_lamp_color_remains_authoritative();
@@ -156,6 +172,6 @@ int main()
     selected_completion_settles_after_animation_ownership_ends();
     if (failures)
         return EXIT_FAILURE;
-    std::cout << "PASS status_reducer (8 scenarios)\n";
+    std::cout << "PASS status_reducer (9 scenarios)\n";
     return EXIT_SUCCESS;
 }

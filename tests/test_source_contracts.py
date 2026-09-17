@@ -44,7 +44,7 @@ require("main/ui.cpp",
         r"void note_composer_control_closed\(\)[\s\S]{0,200}dismiss_composer_control_preview\(\)",
         "the host's own close frame must take the control page down")
 require("main/codex_micro_protocol.cpp",
-        r"if \(!any_lit\) \{[\s\S]{0,400}note_composer_control_closed\(\)",
+        r"if \(!host_select::any_lit\(now\)\) \{[\s\S]{0,400}note_composer_control_closed\(\)",
         "an all-off frame must be read as the host closing its surface")
 require("main/codex_micro_protocol.cpp",
         r"bool uniform_white = true;[\s\S]{0,600}note_composer_control_closed\(\)",
@@ -55,8 +55,17 @@ require("main/ui.cpp",
         r"void note_composer_control_preview\(\)[\s\S]{0,450}if \(composer_control_target\)",
         "late light preview must not reopen a confirmed control")
 require("main/codex_micro_protocol.cpp",
-        r"if \(selection_guarded\(\) \|\| ui::composer_control_active\(\)\)[\s\S]{0,2400}picker_preview_mirrored[\s\S]{0,80}return false;",
+        r"picker_preview[\s\S]{0,2400}picker_preview_mirrored[\s\S]{0,80}return false;",
         "picker lamp preview must bypass the task status reducer")
+require("main/codex_micro_protocol.cpp",
+        r"looks_like_task_status\(now\)",
+        "a leftover encoder guard must not drop a live Codex task snapshot")
+require("main/codex_micro_protocol.cpp",
+        r"ui::select\(slot, animate\)",
+        "host selection must move the visible cursor, not only model.selected")
+require("main/host_select.h",
+        r"white_count == 1",
+        "a white blink must outrank working breaths when inferring host selection")
 require("main/codex_micro_protocol.cpp",
         r"ui::note_composer_control_lamps\(preview_rgb, preview_level\)",
         "the guarded lamp frame must be mirrored onto the control page, not dropped")
@@ -121,7 +130,7 @@ require("main/audio.cpp",
         r"apply: C5 -> E5 -> G5",
         "composer confirmation must use the successful rising major cue")
 require("main/codex_micro_protocol.cpp",
-        r"selection_guarded\(\) \|\| ui::composer_control_active\(\)",
+        r"ui::composer_control_active\(\)[\s\S]{0,120}selection_guarded\(\) && !host_select::looks_like_task_status\(now\)",
         "host-opened composer control must keep previews out of task status")
 require("main/ui.cpp",
         r"composer_control_open_sound_pending[\s\S]{0,260}audio::play\(audio::Cue::MenuOpen\)",
@@ -164,6 +173,9 @@ require("main/codex_micro_protocol.cpp", r"usb_last_valid_ms[\s\S]{0,200}ble_las
 require("main/main.cpp",
         r"s\.link == model::Link::Offline[\s\S]{0,260}press\.key == Key::Settings[\s\S]{0,180}ui::Screen::Boot\s*:\s*ui::Screen::Settings",
         "Tab must toggle local settings from the offline splash")
+require("main/main.cpp",
+        r"splash_settings[\s\S]{0,220}Key::Settings[\s\S]{0,80}Key::DebugSettings",
+        "Tab from a dimmed splash must still open local settings")
 require("main/main.cpp",
         r"developer_preview_active\(\)[\s\S]{0,180}Key::Back[\s\S]{0,100}close_developer_preview\(\)[\s\S]{0,40}return;",
         "developer previews must capture all input and close only on Esc")
@@ -424,7 +436,7 @@ require("tools/install.py",
         r"select_ota\(a\.port,\s*label,\s*\"115200\"\)[\s\S]{0,180}installed and launched",
         "M5Apps installer must select and launch the flashed OTA app without a manual picker")
 require("main/codex_micro_protocol.cpp",
-        r"status_reducer::apply\(\s*task, frame, session\.baseline\(\)\)",
+        r"status_reducer::apply\(\s*task, frame, restoring\)",
         "all status snapshots during control-plane bootstrap must be baseline-only")
 require("main/status_reducer.h",
         r"if \(initial_sync\)[\s\S]{0,420}locally_viewed_done = true[\s\S]{0,120}unseen_done = false",
@@ -436,8 +448,13 @@ forbid("main/codex_micro_protocol.cpp",
        r"selection_guarded\(\)\s*&&\s*task\.status == model::Status::Done",
        "selection guard must not suppress selected completion read state")
 require("main/codex_micro_protocol.cpp",
-        r"if \(!session\.baseline\(\)\)\s*model::mark_done_viewed\(model::state\.selected\)",
+        r"if \(!restoring\)\s*model::mark_done_viewed\(model::state\.selected\)",
         "every live native snapshot must repair selected completion read state")
+require("main/session_sync.h", r"kHandshakeSettleMs\s*=\s*1000",
+        "post-handshake lamp republish must stay in the restore window")
+require("main/codex_micro_protocol.cpp",
+        r"task\.seen = false",
+        "a new session must not inherit seen flags from the previous deck")
 require("main/ui.cpp",
         r"!announcing\(\)[\s\S]{0,420}settle_viewed_completion\([\s\S]{0,120}has_announcement_for_slot\(slot\)",
         "a completed selected task must settle even if its animation finalizer is missed")

@@ -22,11 +22,16 @@ int main()
     check(sync.baseline(), "intermediate thread snapshots stay baseline");
     sync.note(session_sync::Method::DeviceStatus);
     check(sync.baseline(), "partial handshake stays baseline");
-    sync.note(session_sync::Method::LightingConfig);
-    check(!sync.baseline(), "complete handshake enables live events");
+    const uint32_t handshake_at = 4000;
+    sync.note(session_sync::Method::LightingConfig, handshake_at);
+    check(sync.baseline(handshake_at), "completing handshake is still restore");
+    check(sync.baseline(handshake_at + session_sync::kHandshakeSettleMs - 1),
+          "follow-up lamps inside the settle window stay restore");
+    check(!sync.baseline(handshake_at + session_sync::kHandshakeSettleMs),
+          "after settle, live events");
     sync.begin();
     check(sync.baseline(), "real session loss starts a new baseline");
     if (failures) return EXIT_FAILURE;
-    std::cout << "PASS session_sync (5 scenarios)\n";
+    std::cout << "PASS session_sync (7 scenarios)\n";
     return EXIT_SUCCESS;
 }
