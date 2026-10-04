@@ -125,7 +125,7 @@ Press `1` through `6` to open the matching task slot.
 | Enter or Space | Confirm an open dial surface; otherwise send the prepared message |
 | `;` / `.` / `,` / `/` | Move the native stick **up / down / left / right** |
 | `T` / `Y` / `U` / `I` / `O` / `P` | Trigger configurable action slots; by default `Y` is Approve and `U` is Reject |
-| `A` | Trigger the combined `ACT10_ACT11` action |
+| `A` | Send the combined `ACT10_ACT11` press and release |
 | Hold `G0` | Hold Codex push-to-talk for the selected task; the Mac records the audio |
 | `-` | Mute local sound or restore the previous volume |
 | `=` | Open or close the on-device key map |

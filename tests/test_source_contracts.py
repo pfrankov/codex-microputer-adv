@@ -147,6 +147,17 @@ require("main/key_layout.h",
 require("main/main.cpp",
         r"if \(!press\.down\)[\s\S]{0,700}Key::NativeAction[\s\S]{0,400}send_native_action_to\([\s\S]{0,180}false",
         "all native command slots must preserve their release edge")
+require("main/main.cpp", r"native_action_transport\[keys::kNativeActionCount\]",
+        "held native actions must include a separate compound-action slot")
+require("main/main.cpp", r"const int action_index = keys::native_action_index\(press\.digit\)",
+        "native action wire identifiers must be normalized before tracking")
+require("main/main.cpp",
+        r"Key::NativeAction && action_index >= 0[\s\S]{0,100}native_action_transport\[action_index\]",
+        "compound native actions must use the tracked transport on release")
+require("main/main.cpp", r"native_action_transport\[action_index\] = target",
+        "successful native action presses must remember their transport")
+forbid("main/main.cpp", r"native_action_transport\[press\.digit\]",
+       "wire action identifiers must never index held transports directly")
 require("main/main.cpp",
         r"if \(!press\.down\)[\s\S]{0,400}send_agent_key_to\([\s\S]{0,160}false[\s\S]{0,20000}send_agent_key_to\([\s\S]{0,160}true",
         "agent keys must preserve down and up for native double tap")

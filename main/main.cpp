@@ -62,7 +62,7 @@ struct VoiceGesture {
 };
 VoiceGesture voice_gesture;
 codex_micro::Transport agent_key_transport[model::kMaxTasks] = {};
-codex_micro::Transport native_action_transport[13] = {};
+codex_micro::Transport native_action_transport[keys::kNativeActionCount] = {};
 codex_micro::Transport encoder_press_transport = codex_micro::Transport::None;
 uint32_t joystick_release_ms = 0;
 bool joystick_deflected = false;
@@ -242,7 +242,7 @@ bool send_encoder_press_to(codex_micro::Transport target)
 }
 bool send_native_action_to(codex_micro::Transport target, int slot, bool down, int agent = -1)
 {
-    if ((slot < 6 || slot > 12) && slot != 1011)
+    if (keys::native_action_index(slot) < 0)
         return false;
     char key[12];
     if (slot == 1011)
@@ -518,6 +518,7 @@ void send_screenshot(const char* scene)
 void handle_press(const Press& press)
 {
     auto& s = model::state;
+    const int action_index = keys::native_action_index(press.digit);
     if (press.key == Key::None)
         return;
     // Developer previews are inert captures of real rendering paths. Escape is
@@ -558,11 +559,11 @@ void handle_press(const Press& press)
                     send_agent_key_to(target, slot, false);
                 agent_key_transport[slot] = codex_micro::Transport::None;
             }
-        } else if (press.key == Key::NativeAction && press.digit >= 0 && press.digit < 13) {
-            auto target = native_action_transport[press.digit];
+        } else if (press.key == Key::NativeAction && action_index >= 0) {
+            auto target = native_action_transport[action_index];
             if (target != codex_micro::Transport::None)
                 send_native_action_to(target, press.digit, false, s.selected);
-            native_action_transport[press.digit] = codex_micro::Transport::None;
+            native_action_transport[action_index] = codex_micro::Transport::None;
         } else if (press.key == Key::Enter) {
             // Only the confirm press claims a transport, so an Enter that
             // submitted the composer releases nothing here.
@@ -717,13 +718,13 @@ void handle_press(const Press& press)
         // their current command/Skill mapping exactly as it does for Micro.
         const auto target = codex_micro::active_transport();
         if (!send_native_action_to(target, press.digit, true, s.selected)) {
-            if (press.digit >= 0 && press.digit < 13)
-                native_action_transport[press.digit] = codex_micro::Transport::None;
+            if (action_index >= 0)
+                native_action_transport[action_index] = codex_micro::Transport::None;
             ui::toast("NO HOST", "action not sent", theme::kOrange);
             break;
         }
-        if (press.digit >= 0 && press.digit < 13)
-            native_action_transport[press.digit] = target;
+        if (action_index >= 0)
+            native_action_transport[action_index] = target;
         if (press.digit == 7)
             ui::toast("APPROVE", "sent to Codex", theme::kDone);
         else if (press.digit == 8)
