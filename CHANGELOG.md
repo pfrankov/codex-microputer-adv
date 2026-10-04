@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.9 — 2026-10-04
+
+- Send the physical release of the combined `ACT10_ACT11` action on `A`.
+  Its special identifier previously fell outside held-action tracking, so
+  Codex received the press without a matching release. Keep both edges on
+  the same USB or Bluetooth transport.
+- Cover compound-action transport indexing in host regressions and update
+  the corresponding control documentation.
+
 ## 0.10.8 — 2026-09-18
 
 - Follow Codex chat switches on the Cardputer cursor. A leftover dial/preview

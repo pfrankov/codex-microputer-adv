@@ -15,8 +15,9 @@ enum class Key : uint8_t {
     // Reasoning depth and the model picker. Both are *relative*: the host only
     // accepts encoder detents and clicks, so there is no way to name a value.
     EncoderLeft, EncoderRight,
-    // One of the host-configurable Codex Micro command slots ACT06..ACT11.
-    // Press::digit carries the numeric suffix; ACT12 remains the Enter key.
+    // A host-configurable Codex Micro command slot ACT06..ACT11 or ACT10_ACT11.
+    // Press::digit carries the numeric suffix, or 1011 for ACT10_ACT11.
+    // ACT12 remains the Enter key.
     NativeAction,
     // The key map, on screen. Micro has to be memorised; this one does not.
     Help,
@@ -30,6 +31,14 @@ struct Press {
     int digit = 0;
     bool down = true;
 };
+
+// The combined action has a wire identifier outside the ordinary slot range.
+// Keep its held transport separate without using that wire value as an index.
+constexpr int kNativeActionCount = 14;
+constexpr int native_action_index(int slot)
+{
+    return slot == 1011 ? 13 : (slot >= 6 && slot <= 12 ? slot : -1);
+}
 
 enum class Backend : uint8_t { None, Matrix, Tca8418 };
 

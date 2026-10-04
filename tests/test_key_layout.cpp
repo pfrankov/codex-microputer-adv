@@ -1,5 +1,7 @@
 #include <cassert>
 #include <cstdio>
+#include <limits>
+#include <initializer_list>
 
 #include "key_layout.h"
 
@@ -34,5 +36,20 @@ int main()
     assert(combined_voice.key == keys::Key::NativeAction);
     assert(combined_voice.digit == 1011);
 
-    std::puts("PASS key_layout (19 bindings)");
+    // Every native command, including the compound A action, has a distinct
+    // in-bounds held-transport slot for its matching physical release.
+    bool used[keys::kNativeActionCount] = {};
+    for (int slot : {6, 7, 8, 9, 10, 11, 12, combined_voice.digit}) {
+        const int index = keys::native_action_index(slot);
+        assert(index >= 0 && index < keys::kNativeActionCount);
+        assert(!used[index]);
+        used[index] = true;
+    }
+    for (int slot : {std::numeric_limits<int>::min(), -1, 0, 5, 13, 1010, 1012,
+                     std::numeric_limits<int>::max()}) {
+        assert(keys::native_action_index(slot) == -1);
+    }
+    assert(keys::needs_release(combined_voice.key));
+
+    std::puts("PASS key_layout (19 bindings, native action release indices)");
 }
